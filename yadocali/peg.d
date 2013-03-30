@@ -447,6 +447,41 @@ template Peg(S)
         assert(src.empty);
     }
 
+    /**
+     *  choice parser.
+     *
+     *  Params:
+     *      parsers = parsers for choosing.
+     *      src = a source range.
+     *  Returns:
+     *      true if mathed a one of parsers.
+     */
+    bool matchChoice(parsers...)(ref S src) {
+        foreach(p; parsers) {
+            if(p(src)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    unittest {
+        auto src = "test";
+        alias Peg!(typeof(src)) P;
+        alias P.matchChar!'t' ch_t;
+        alias P.matchChar!'e' ch_e;
+        alias P.matchChar!'s' ch_s;
+
+        assert(P.matchChoice!(ch_t, ch_e)(src));
+        assert(src.front == 'e');
+
+        assert(P.matchChoice!(ch_t, ch_e)(src));
+        assert(src.front == 's');
+
+        assert(!P.matchChoice!(ch_t, ch_e)(src));
+        assert(src.front == 's');
+    }
+
 } // end of template Peg(S)
 
 unittest {
