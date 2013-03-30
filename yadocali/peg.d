@@ -489,3 +489,22 @@ unittest {
     mixin Peg!(string);
 }
 
+// test for recursive calling.
+version(unittest) {
+
+    alias Peg!string P;
+
+    // parse 't' parser / $
+    bool parser(ref string src) {
+        return P.matchChoice!(P.matchSequence!(P.matchChar!'t', parser), P.matchEmpty)(src);
+    }
+
+    unittest {
+        auto src = "tttt";
+        assert(parser(src));
+
+        src = "ttte";
+        assert(!parser(src));
+    }
+}
+
