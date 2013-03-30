@@ -238,12 +238,14 @@ template isParser(alias func, S)
 }
 
 /**
- *  check matching parser and restore source position.
+ *  check parser matching and restore source position.
  *
  *  Params:
  *      parser = checking parser.
  *      S = source range type.
  *      src = a source range.
+ *  Returns:
+ *      true if matched parser.
  */
 bool testAnd(alias parser, S)(ref S src)
         if(isForwardRange!S && isParser!(parser, S)) {
@@ -257,6 +259,40 @@ unittest {
     auto src = "test";
 
     assert(testAnd!(matchChar!('t', typeof(src)))(src));
+    assert(src.front == 't');
+
+    assert(!testAnd!(matchChar!('e', typeof(src)))(src));
+    assert(src.front == 't');
+
+    assert(matchChar!('t')(src));
+    assert(src.front == 'e');
+}
+
+/**
+ *  check parser not matching and restore source position.
+ *
+ *  Params:
+ *      parser = checking parser.
+ *      S = source range type.
+ *      src = a source range.
+ *  Returns:
+ *      true if not matched parser.
+ */
+bool testNot(alias parser, S)(ref S src)
+        if(isForwardRange!S && isParser!(parser, S)) {
+    immutable before = src.save;
+    immutable result = !parser(src);
+    src = before;
+    return result;
+}
+
+unittest {
+    auto src = "test";
+
+    assert(!testNot!(matchChar!('t', typeof(src)))(src));
+    assert(src.front == 't');
+
+    assert(testNot!(matchChar!('e', typeof(src)))(src));
     assert(src.front == 't');
 
     assert(matchChar!('t')(src));
