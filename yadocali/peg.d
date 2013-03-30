@@ -8,6 +8,7 @@
 module yadocali.peg;
 
 import std.range;
+import std.traits;
 
 /**
  *  match any character.
@@ -18,7 +19,8 @@ import std.range;
  *  Returns:
  *      return true if any character existing.
  */
-bool matchAny(S)(ref S src) if(isInputRange!S) {
+bool matchAny(S)(ref S src)
+        if(isInputRange!S) {
     if(!src.empty) {
         src.popFront();
         return true;
@@ -54,7 +56,8 @@ unittest {
  *  Returns:
  *      true if src.front is e.
  */
-bool matchChar(alias e, S)(ref S src) if(isInputRange!S && __traits(compiles, (src.front == e))) {
+bool matchChar(alias e, S)(ref S src)
+        if(isInputRange!S && __traits(compiles, (src.front == e))) {
     if(!src.empty && src.front == e) {
         src.popFront();
         return true;
@@ -90,7 +93,8 @@ unittest {
  *  Returns:
  *      true if src.front is e.
  */
-bool matchString(alias str, S)(ref S src) if(isForwardRange!S && isInputRange!(typeof(str)) && is(ElementType!S : ElementType!(typeof(str)))) {
+bool matchString(alias str, S)(ref S src)
+        if(isForwardRange!S && isInputRange!(typeof(str)) && is(ElementType!S : ElementType!(typeof(str)))) {
     auto before = src.save;
 
     // not use foreach because str parameter can be not array types.
@@ -132,7 +136,8 @@ unittest {
  *  Returns:
  *      true if src is empty.
  */
-bool matchEmpty(S)(ref S src) if(isInputRange!S) {
+bool matchEmpty(S)(ref S src)
+        if(isInputRange!S) {
     return src.empty;
 }
 
@@ -157,7 +162,8 @@ unittest {
  *  Returns:
  *      true if src.front into character range. (e1 <= src.front <= e2)
  */
-bool matchRange(alias e1, alias e2, S)(ref S src) if(isInputRange!S && __traits(compiles, (e1 <= src.front && src.front <= e2))) {
+bool matchRange(alias e1, alias e2, S)(ref S src)
+        if(isInputRange!S && __traits(compiles, (e1 <= src.front && src.front <= e2))) {
     if(!src.empty) {
         immutable e = src.front;
         if(e1 <= e && e <= e2) {
@@ -193,7 +199,8 @@ unittest {
  *  Returns:
  *      true if src.front is member of character set.
  */
-bool matchSet(alias set, S)(ref S src) if(isForwardRange!S && isInputRange!(typeof(set)) && is(ElementType!S : ElementType!(typeof(set)))) {
+bool matchSet(alias set, S)(ref S src)
+        if(isForwardRange!S && isInputRange!(typeof(set)) && is(ElementType!S : ElementType!(typeof(set)))) {
     if(!src.empty) {
         immutable front = src.front;
         foreach(e; set) {
@@ -214,5 +221,45 @@ unittest {
     assert(!matchSet!"ab"(src)); // c
     assert(matchSet!"c"(src));   // c
     assert(!matchSet!"c"(src));  // (empty)
+}
+
+/**
+ *  returns P can use as parser function.
+ *
+ *  Params:
+ *      func = a tested function.
+ *      S = source range type.
+ */
+template isParser(alias func, S)
+        if(isCallable!func) {
+    enum isParser = is(ReturnType!func : bool)
+        && is(ParameterTypeTuple!func[0] == S)
+        && (ParameterStorageClassTuple!func[0] == ParameterStorageClass.ref_);
+}
+
+/**
+ *  check matching parser and restore source position.
+ *
+ *  Params:
+ *      parser = checking parser.
+ *      S = source range type.
+ *      src = a source range.
+ */
+bool testAnd(alias parser, S)(ref S src)
+        if(isForwardRange!S && isParser!(parser, S)) {
+    immutable before = src.save;
+    immutable result = parser(src);
+    src = before;
+    return result;
+}
+
+unittest {
+    auto src = "test";
+
+    assert(testAnd!(matchChar!('t', typeof(src)))(src));
+    assert(src.front == 't');
+
+    assert(matchChar!('t')(src));
+    assert(src.front == 'e');
 }
 
