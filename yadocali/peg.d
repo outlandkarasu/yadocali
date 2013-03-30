@@ -299,3 +299,32 @@ unittest {
     assert(src.front == 'e');
 }
 
+/**
+ *  check parser matching current position and always return true.
+ *
+ *  Params:
+ *      parser = optional matching parser.
+ *      S = source range type.
+ *      src = a source range.
+ *  Returns:
+ *      always true.
+ */
+bool matchOption(alias parser, S)(ref S src)
+        if(isForwardRange!S && isParser!(parser, S)) {
+    parser(src);
+    return true;
+}
+
+unittest {
+    auto src = "test";
+
+    assert(matchOption!(matchChar!('t', typeof(src)))(src));
+    assert(src.front == 'e');
+
+    assert(matchOption!(matchChar!('t', typeof(src)))(src));
+    assert(src.front == 'e');
+
+    assert(!matchChar!('t')(src));
+    assert(src.front == 'e');
+}
+
