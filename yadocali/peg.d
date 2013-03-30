@@ -328,3 +328,42 @@ unittest {
     assert(src.front == 'e');
 }
 
+/**
+ *  check parser matching current position more than 0 times and always return true.
+ *
+ *  Params:
+ *      parser = matching parser.
+ *      S = source range type.
+ *      src = a source range.
+ *  Returns:
+ *      always true.
+ */
+bool matchRepeat0(alias parser, S)(ref S src)
+        if(isForwardRange!S && isParser!(parser, S)) {
+    while(parser(src)) {
+        // do nothing.
+    }
+    return true;
+}
+
+unittest {
+    auto src = "test";
+
+    assert(matchRepeat0!(matchChar!('t', typeof(src)))(src));
+    assert(src.front == 'e');
+
+    assert(matchRepeat0!(matchChar!('t', typeof(src)))(src));
+    assert(src.front == 'e');
+
+    assert(!matchChar!('t')(src));
+    assert(src.front == 'e');
+
+    src = "ttttest";
+
+    assert(matchRepeat0!(matchChar!('t', typeof(src)))(src));
+    assert(src.front == 'e');
+
+    assert(matchRepeat0!(matchChar!('t', typeof(src)))(src));
+    assert(src.front == 'e');
+}
+
