@@ -413,8 +413,7 @@ unittest {
 } // end of template Peg(S)
 
 unittest {
-    auto src = "a";
-    //assert(Peg!(string).matchChar!'a'(src));
+    // for running unittest
     mixin Peg!(string);
 }
 
