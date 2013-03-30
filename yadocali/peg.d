@@ -11,6 +11,18 @@ import std.range;
 import std.traits;
 
 /**
+ *  PEG parser combinator template.
+ *
+ *  Params:
+ *      S = source range type.(forward range requirement)
+ */
+template Peg(S)
+        if(isForwardRange!S) {
+
+    /// source range type.
+    alias S SourceType;
+
+/**
  *  match any character.
  *
  *  Params:
@@ -19,8 +31,7 @@ import std.traits;
  *  Returns:
  *      return true if any character existing.
  */
-bool matchAny(S)(ref S src)
-        if(isInputRange!S) {
+bool matchAny(ref S src) {
     if(!src.empty) {
         src.popFront();
         return true;
@@ -30,34 +41,35 @@ bool matchAny(S)(ref S src)
 }
 
 unittest {
-    // matching one character source.
     auto src = "a";
-    assert(matchAny(src));
+    alias Peg!(typeof(src)) P;
+
+    // matching one character source.
+    assert(P.matchAny(src));
 
     // not matching empty source.
     src = "";
-    assert(!matchAny(src));
+    assert(!P.matchAny(src));
 
     // multiple match for string source.
     src = "test";
-    assert(matchAny(src));  // t
-    assert(matchAny(src));  // e
-    assert(matchAny(src));  // s
-    assert(matchAny(src));  // t
-    assert(!matchAny(src)); // end of source.
+    assert(P.matchAny(src));  // t
+    assert(P.matchAny(src));  // e
+    assert(P.matchAny(src));  // s
+    assert(P.matchAny(src));  // t
+    assert(!P.matchAny(src)); // end of source.
 }
 
 /**
  *  match a character.
  *
  *  Params:
- *      S = source range type. (input range requirement)
  *      e = a matching character. 
  *  Returns:
  *      true if src.front is e.
  */
-bool matchChar(alias e, S)(ref S src)
-        if(isInputRange!S && __traits(compiles, (src.front == e))) {
+bool matchChar(alias e)(ref S src)
+        if(__traits(compiles, (src.front == e))) {
     if(!src.empty && src.front == e) {
         src.popFront();
         return true;
@@ -67,34 +79,35 @@ bool matchChar(alias e, S)(ref S src)
 }
 
 unittest {
-    // match a same character.
     auto src = "a";
-    assert(matchChar!('a')(src));
+    alias Peg!(typeof(src)) P;
+
+    // match a same character.
+    assert(P.matchChar!('a')(src));
 
     // not match a different character.
     src = "a";
-    assert(!matchChar!('x')(src));
+    assert(!P.matchChar!('x')(src));
 
     // match string source.
     src = "abcd";
-    assert(matchChar!('a')(src));
-    assert(matchChar!('b')(src));
-    assert(matchChar!('c')(src));
-    assert(matchChar!('d')(src));
-    assert(!matchChar!('d')(src));
+    assert(P.matchChar!('a')(src));
+    assert(P.matchChar!('b')(src));
+    assert(P.matchChar!('c')(src));
+    assert(P.matchChar!('d')(src));
+    assert(!P.matchChar!('d')(src));
 }
 
 /**
  *  match string.
  *
  *  Params:
- *      S = source range type. (forwarding range requirement)
  *      str = a matching string. 
  *  Returns:
  *      true if src.front is e.
  */
-bool matchString(alias str, S)(ref S src)
-        if(isForwardRange!S && isInputRange!(typeof(str)) && is(ElementType!S : ElementType!(typeof(str)))) {
+bool matchString(alias str)(ref S src)
+        if(isInputRange!(typeof(str)) && is(ElementType!S : ElementType!(typeof(str)))) {
     auto before = src.save;
 
     // not use foreach because str parameter can be not array types.
@@ -109,21 +122,23 @@ bool matchString(alias str, S)(ref S src)
 }
 
 unittest {
-    // match a same character.
     auto src = "a";
-    assert(matchString!("a")(src));
+    alias Peg!(typeof(src)) P;
 
-    // not match a different character.
+    // match a same character.
+    assert(P.matchString!("a")(src));
+
+    // not P.match a different character.
     src = "a";
-    assert(!matchString!("x")(src));
+    assert(!P.matchString!("x")(src));
 
-    // match string source.
+    // P.match string source.
     src = "abcd";
-    assert(matchString!("ab")(src));
-    assert(!matchString!("ab")(src));
+    assert(P.matchString!("ab")(src));
+    assert(!P.matchString!("ab")(src));
     
     // rest string
-    assert(matchString!("cd")(src));
+    assert(P.matchString!("cd")(src));
     assert(src.empty);
 }
 
@@ -136,19 +151,20 @@ unittest {
  *  Returns:
  *      true if src is empty.
  */
-bool matchEmpty(S)(ref S src)
-        if(isInputRange!S) {
+bool matchEmpty(ref S src) {
     return src.empty;
 }
 
 unittest {
-    // match a empty source.
     auto src = "";
-    assert(matchEmpty(src));
+    alias Peg!(typeof(src)) P;
 
-    // not match a normal source.
+    // match a empty source.
+    assert(P.matchEmpty(src));
+
+    // not P.match a normal source.
     src = "test";
-    assert(!matchEmpty(src));
+    assert(!P.matchEmpty(src));
 }
 
 /**
@@ -157,13 +173,12 @@ unittest {
  *  Params:
  *      e1 = begin of character range.
  *      e2 = end of character range.
- *      S = source range type.
  *      src = a source range. (input range requirements)
  *  Returns:
  *      true if src.front into character range. (e1 <= src.front <= e2)
  */
-bool matchRange(alias e1, alias e2, S)(ref S src)
-        if(isInputRange!S && __traits(compiles, (e1 <= src.front && src.front <= e2))) {
+bool matchRange(alias e1, alias e2)(ref S src)
+        if(__traits(compiles, (e1 <= src.front && src.front <= e2))) {
     if(!src.empty) {
         immutable e = src.front;
         if(e1 <= e && e <= e2) {
@@ -175,18 +190,20 @@ bool matchRange(alias e1, alias e2, S)(ref S src)
 }
 
 unittest {
-    // match character into character range.
     auto src = "az";
-    assert(matchRange!('a', 'z')(src));
-    assert(matchRange!('a', 'z')(src));
-    assert(!matchRange!('a', 'z')(src));
+    alias Peg!(typeof(src)) P;
 
-    // not match character that out of character range.
+    // match character into character range.
+    assert(P.matchRange!('a', 'z')(src));
+    assert(P.matchRange!('a', 'z')(src));
+    assert(!P.matchRange!('a', 'z')(src));
+
+    // not P.match character that out of character range.
     src = "AZ";
-    assert(!matchRange!('a', 'z')(src));
-    assert(matchRange!('A', 'Z')(src));
-    assert(matchRange!('A', 'Z')(src));
-    assert(!matchRange!('A', 'Z')(src));
+    assert(!P.matchRange!('a', 'z')(src));
+    assert(P.matchRange!('A', 'Z')(src));
+    assert(P.matchRange!('A', 'Z')(src));
+    assert(!P.matchRange!('A', 'Z')(src));
 }
 
 /**
@@ -194,13 +211,12 @@ unittest {
  *
  *  Params:
  *      set = character set.
- *      S = source range type. (input range requirements)
  *      src = a source range.
  *  Returns:
  *      true if src.front is member of character set.
  */
-bool matchSet(alias set, S)(ref S src)
-        if(isForwardRange!S && isInputRange!(typeof(set)) && is(ElementType!S : ElementType!(typeof(set)))) {
+bool matchSet(alias set)(ref S src)
+        if(isInputRange!(typeof(set)) && is(ElementType!S : ElementType!(typeof(set)))) {
     if(!src.empty) {
         immutable front = src.front;
         foreach(e; set) {
@@ -214,27 +230,15 @@ bool matchSet(alias set, S)(ref S src)
 }
 
 unittest {
-    // match a character that is member of character set.
     auto src = "abc";
-    assert(matchSet!"ab"(src));  // a
-    assert(matchSet!"ab"(src));  // b
-    assert(!matchSet!"ab"(src)); // c
-    assert(matchSet!"c"(src));   // c
-    assert(!matchSet!"c"(src));  // (empty)
-}
+    alias Peg!(typeof(src)) P;
 
-/**
- *  returns P can use as parser function.
- *
- *  Params:
- *      func = a tested function.
- *      S = source range type.
- */
-template isParser(alias func, S)
-        if(isCallable!func) {
-    enum isParser = is(ReturnType!func : bool)
-        && is(ParameterTypeTuple!func[0] == S)
-        && (ParameterStorageClassTuple!func[0] == ParameterStorageClass.ref_);
+    // match a character that is member of character set.
+    assert(P.matchSet!"ab"(src));  // a
+    assert(P.matchSet!"ab"(src));  // b
+    assert(!P.matchSet!"ab"(src)); // c
+    assert(P.matchSet!"c"(src));   // c
+    assert(!P.matchSet!"c"(src));  // (empty)
 }
 
 /**
@@ -242,13 +246,11 @@ template isParser(alias func, S)
  *
  *  Params:
  *      parser = checking parser.
- *      S = source range type.
  *      src = a source range.
  *  Returns:
  *      true if matched parser.
  */
-bool testAnd(alias parser, S)(ref S src)
-        if(isForwardRange!S && isParser!(parser, S)) {
+bool testAnd(alias parser)(ref S src) {
     immutable before = src.save;
     immutable result = parser(src);
     src = before;
@@ -257,14 +259,16 @@ bool testAnd(alias parser, S)(ref S src)
 
 unittest {
     auto src = "test";
+    alias Peg!(typeof(src)) P;
+    alias P.matchChar!'t' parser;
 
-    assert(testAnd!(matchChar!('t', typeof(src)))(src));
+    assert(P.testAnd!parser(src));
     assert(src.front == 't');
 
-    assert(!testAnd!(matchChar!('e', typeof(src)))(src));
+    assert(!P.testAnd!(P.matchChar!'e')(src));
     assert(src.front == 't');
 
-    assert(matchChar!('t')(src));
+    assert(parser(src));
     assert(src.front == 'e');
 }
 
@@ -273,13 +277,11 @@ unittest {
  *
  *  Params:
  *      parser = checking parser.
- *      S = source range type.
  *      src = a source range.
  *  Returns:
  *      true if not matched parser.
  */
-bool testNot(alias parser, S)(ref S src)
-        if(isForwardRange!S && isParser!(parser, S)) {
+bool testNot(alias parser)(ref S src) {
     immutable before = src.save;
     immutable result = !parser(src);
     src = before;
@@ -288,14 +290,15 @@ bool testNot(alias parser, S)(ref S src)
 
 unittest {
     auto src = "test";
+    alias Peg!(typeof(src)) P;
 
-    assert(!testNot!(matchChar!('t', typeof(src)))(src));
+    assert(!P.testNot!(P.matchChar!('t'))(src));
     assert(src.front == 't');
 
-    assert(testNot!(matchChar!('e', typeof(src)))(src));
+    assert(P.testNot!(P.matchChar!('e'))(src));
     assert(src.front == 't');
 
-    assert(matchChar!('t')(src));
+    assert(P.matchChar!('t')(src));
     assert(src.front == 'e');
 }
 
@@ -304,27 +307,27 @@ unittest {
  *
  *  Params:
  *      parser = optional matching parser.
- *      S = source range type.
  *      src = a source range.
  *  Returns:
  *      always true.
  */
-bool matchOption(alias parser, S)(ref S src)
-        if(isForwardRange!S && isParser!(parser, S)) {
+bool matchOption(alias parser)(ref S src) {
     parser(src);
     return true;
 }
 
 unittest {
     auto src = "test";
+    alias Peg!(typeof(src)) P;
+    alias P.matchChar!'t' parser;
 
-    assert(matchOption!(matchChar!('t', typeof(src)))(src));
+    assert(P.matchOption!parser(src));
     assert(src.front == 'e');
 
-    assert(matchOption!(matchChar!('t', typeof(src)))(src));
+    assert(P.matchOption!parser(src));
     assert(src.front == 'e');
 
-    assert(!matchChar!('t')(src));
+    assert(!parser(src));
     assert(src.front == 'e');
 }
 
@@ -333,13 +336,11 @@ unittest {
  *
  *  Params:
  *      parser = matching parser.
- *      S = source range type.
  *      src = a source range.
  *  Returns:
  *      always true.
  */
-bool matchRepeat0(alias parser, S)(ref S src)
-        if(isForwardRange!S && isParser!(parser, S)) {
+bool matchRepeat0(alias parser)(ref S src) {
     while(parser(src)) {
         // do nothing.
     }
@@ -348,22 +349,24 @@ bool matchRepeat0(alias parser, S)(ref S src)
 
 unittest {
     auto src = "test";
+    alias Peg!(typeof(src)) P;
+    alias P.matchChar!'t' parser;
 
-    assert(matchRepeat0!(matchChar!('t', typeof(src)))(src));
+    assert(P.matchRepeat0!parser(src));
     assert(src.front == 'e');
 
-    assert(matchRepeat0!(matchChar!('t', typeof(src)))(src));
+    assert(P.matchRepeat0!parser(src));
     assert(src.front == 'e');
 
-    assert(!matchChar!('t')(src));
+    assert(!parser(src));
     assert(src.front == 'e');
 
     src = "ttttest";
 
-    assert(matchRepeat0!(matchChar!('t', typeof(src)))(src));
+    assert(P.matchRepeat0!parser(src));
     assert(src.front == 'e');
 
-    assert(matchRepeat0!(matchChar!('t', typeof(src)))(src));
+    assert(P.matchRepeat0!parser(src));
     assert(src.front == 'e');
 }
 
@@ -372,13 +375,11 @@ unittest {
  *
  *  Params:
  *      parser = matching parser.
- *      S = source range type.
  *      src = a source range.
  *  Returns:
  *      true if matched parser more than 1 times.
  */
-bool matchRepeat1(alias parser, S)(ref S src)
-        if(isForwardRange!S && isParser!(parser, S)) {
+bool matchRepeat1(alias parser)(ref S src) {
     bool result = false;
     while(parser(src)) {
         result = true;
@@ -388,22 +389,32 @@ bool matchRepeat1(alias parser, S)(ref S src)
 
 unittest {
     auto src = "test";
+    alias Peg!(typeof(src)) P;
+    alias P.matchChar!'t' parser;
 
-    assert(matchRepeat1!(matchChar!('t', typeof(src)))(src));
+    assert(P.matchRepeat1!parser(src));
     assert(src.front == 'e');
 
-    assert(!matchRepeat1!(matchChar!('t', typeof(src)))(src));
+    assert(!P.matchRepeat1!parser(src));
     assert(src.front == 'e');
 
-    assert(!matchChar!('t')(src));
+    assert(!parser(src));
     assert(src.front == 'e');
 
     src = "ttttest";
 
-    assert(matchRepeat1!(matchChar!('t', typeof(src)))(src));
+    assert(P.matchRepeat1!parser(src));
     assert(src.front == 'e');
 
-    assert(!matchRepeat1!(matchChar!('t', typeof(src)))(src));
+    assert(!P.matchRepeat1!parser(src));
     assert(src.front == 'e');
+}
+
+} // end of template Peg(S)
+
+unittest {
+    auto src = "a";
+    //assert(Peg!(string).matchChar!'a'(src));
+    mixin Peg!(string);
 }
 
